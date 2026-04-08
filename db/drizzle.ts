@@ -1,7 +1,15 @@
 import * as schema from "./schema";
 
 function createDb() {
-  const url = process.env.DATABASE_URL || "";
+  const url = process.env.DATABASE_URL;
+
+  // During build without DATABASE_URL, return a dummy that will fail at runtime
+  if (!url) {
+    const { neon } = require("@neondatabase/serverless");
+    const { drizzle } = require("drizzle-orm/neon-http");
+    const sql = neon("postgresql://placeholder:placeholder@placeholder/placeholder");
+    return drizzle(sql, { schema });
+  }
 
   // Use Neon serverless for production/Vercel, pg for local dev
   if (url.includes("neon.tech") || process.env.VERCEL) {
