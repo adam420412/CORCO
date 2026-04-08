@@ -235,3 +235,38 @@ export const studentAssignmentsRelations = relations(studentAssignments, ({ one 
     references: [lessons.id],
   }),
 }));
+
+// === NOTEBOOKLM NOTEBOOKS ===
+
+export const notebooks = pgTable("notebooks", {
+  id: serial("id").primaryKey(),
+  notebookId: text("notebook_id").notNull().unique(),
+  title: text("title").notNull(),
+  teacherId: text("teacher_id").notNull(),
+  courseId: integer("course_id").references(() => courses.id, { onDelete: "cascade" }),
+  resourceName: text("resource_name"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notebookSources = pgTable("notebook_sources", {
+  id: serial("id").primaryKey(),
+  notebookDbId: integer("notebook_db_id").references(() => notebooks.id, { onDelete: "cascade" }),
+  sourceId: text("source_id").notNull(),
+  sourceName: text("source_name").notNull(),
+  sourceType: text("source_type").notNull(),
+  resourceName: text("resource_name"),
+  status: text("status").notNull().default("processing"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notebooksRelations = relations(notebooks, ({ many }) => ({
+  sources: many(notebookSources),
+}));
+
+export const notebookSourcesRelations = relations(notebookSources, ({ one }) => ({
+  notebook: one(notebooks, {
+    fields: [notebookSources.notebookDbId],
+    references: [notebooks.id],
+  }),
+}));

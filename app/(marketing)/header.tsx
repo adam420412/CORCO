@@ -12,6 +12,26 @@ export const Header = () => {
             CORCO
           </h1>
         </div>
+        <nav className="hidden lg:flex items-center gap-x-6">
+          <Link
+            href="/oferta"
+            className="text-sm font-medium text-neutral-600 hover:text-teal-600 transition"
+          >
+            Oferta
+          </Link>
+          <Link
+            href="/oferta/korepetycje"
+            className="text-sm font-medium text-neutral-600 hover:text-teal-600 transition"
+          >
+            Korepetycje
+          </Link>
+          <Link
+            href="/oferta/ai"
+            className="text-sm font-medium text-neutral-600 hover:text-teal-600 transition"
+          >
+            AI
+          </Link>
+        </nav>
         <Button size="lg" variant="ghost" asChild>
           <Link href="/learn">
             Zaloguj się

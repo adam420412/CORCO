@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { assignLesson } from "@/actions/assignments";
+import Link from "next/link";
+import { Brain, ArrowRight } from "lucide-react";
 
 type Props = {
   teacherId: string;
@@ -87,6 +89,24 @@ export const TeacherDashboard = ({ teacherId }: Props) => {
           {pending ? "Przypisywanie..." : "Przypisz zadanie"}
         </Button>
       </div>
+
+      {/* Knowledge base link */}
+      <Link href="/teacher/notebooks" className="block">
+        <div className="bg-gradient-to-r from-teal-50 to-teal-100 border-2 border-teal-200 rounded-2xl p-6 hover:border-teal-400 transition-colors cursor-pointer">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-teal-700">Baza wiedzy (NotebookLM)</h2>
+                <p className="text-sm text-teal-600">Dodaj materiały, a AI stworzy zadania dla uczniów</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-teal-500" />
+          </div>
+        </div>
+      </Link>
 
       {/* Stats section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
