@@ -16,6 +16,9 @@ import { upsertChallengeProgress } from "@/actions/challenge-progress";
 import { Header } from "./header";
 import { Footer } from "./footer";
 import { Challenge } from "./challenge";
+import { FillInChallenge } from "./fill-in-challenge";
+import { MatchChallenge } from "./match-challenge";
+import { FlashcardChallenge } from "./flashcard-challenge";
 import { ResultCard } from "./result-card";
 import { QuestionBubble } from "./question-bubble";
 
@@ -92,7 +95,84 @@ export const Quiz = ({
     setSelectedOption(id);
   };
 
+  const handleCorrect = () => {
+    startTransition(() => {
+      upsertChallengeProgress(challenge.id)
+        .then((response) => {
+          if (response?.error === "hearts") {
+            openHeartsModal();
+            return;
+          }
+
+          correctControls.play();
+          setStatus("correct");
+          setPercentage((prev) => prev + 100 / challenges.length);
+
+          // This is a practice
+          if (initialPercentage === 100) {
+            setHearts((prev) => Math.min(prev + 1, 5));
+          }
+        })
+        .catch(() => toast.error("Coś poszło nie tak. Spróbuj ponownie."))
+    });
+  };
+
+  const handleWrong = () => {
+    startTransition(() => {
+      reduceHearts(challenge.id)
+        .then((response) => {
+          if (response?.error === "hearts") {
+            openHeartsModal();
+            return;
+          }
+
+          incorrectControls.play();
+          setStatus("wrong");
+
+          if (!response?.error) {
+            setHearts((prev) => Math.max(prev - 1, 0));
+          }
+        })
+        .catch(() => toast.error("Coś poszło nie tak. Spróbuj ponownie."))
+    });
+  };
+
+  const onFillInSubmit = (answer: string) => {
+    if (!challenge.correctAnswer) return;
+    if (answer.toLowerCase().trim() === challenge.correctAnswer.toLowerCase().trim()) {
+      handleCorrect();
+    } else {
+      handleWrong();
+    }
+  };
+
+  const onMatchComplete = (allMatched: boolean) => {
+    if (allMatched) {
+      handleCorrect();
+    }
+  };
+
+  const onFlashcardComplete = () => {
+    handleCorrect();
+  };
+
   const onContinue = () => {
+    // For MATCH and FLASHCARD, the footer "Dalej" just advances
+    if (challenge.type === "MATCH" || challenge.type === "FLASHCARD" || challenge.type === "FILL_IN") {
+      if (status === "wrong") {
+        setStatus("none");
+        setSelectedOption(undefined);
+        return;
+      }
+      if (status === "correct") {
+        onNext();
+        setStatus("none");
+        setSelectedOption(undefined);
+        return;
+      }
+      return;
+    }
+
     if (!selectedOption) return;
 
     if (status === "wrong") {
@@ -115,43 +195,9 @@ export const Quiz = ({
     }
 
     if (correctOption.id === selectedOption) {
-      startTransition(() => {
-        upsertChallengeProgress(challenge.id)
-          .then((response) => {
-            if (response?.error === "hearts") {
-              openHeartsModal();
-              return;
-            }
-
-            correctControls.play();
-            setStatus("correct");
-            setPercentage((prev) => prev + 100 / challenges.length);
-
-            // This is a practice
-            if (initialPercentage === 100) {
-              setHearts((prev) => Math.min(prev + 1, 5));
-            }
-          })
-          .catch(() => toast.error("Coś poszło nie tak. Spróbuj ponownie."))
-      });
+      handleCorrect();
     } else {
-      startTransition(() => {
-        reduceHearts(challenge.id)
-          .then((response) => {
-            if (response?.error === "hearts") {
-              openHeartsModal();
-              return;
-            }
-
-            incorrectControls.play();
-            setStatus("wrong");
-
-            if (!response?.error) {
-              setHearts((prev) => Math.max(prev - 1, 0));
-            }
-          })
-          .catch(() => toast.error("Coś poszło nie tak. Spróbuj ponownie."))
-      });
+      handleWrong();
     }
   };
 
@@ -204,8 +250,14 @@ export const Quiz = ({
     );
   }
 
-  const title = challenge.type === "ASSIST" 
+  const isNewType = challenge.type === "FILL_IN" || challenge.type === "MATCH" || challenge.type === "FLASHCARD";
+
+  const title = challenge.type === "ASSIST"
     ? "Wybierz poprawną odpowiedź"
+    : challenge.type === "MATCH"
+    ? "Dopasuj pary"
+    : challenge.type === "FLASHCARD"
+    ? "Fiszka"
     : challenge.question;
 
   return (
@@ -227,20 +279,50 @@ export const Quiz = ({
               {challenge.type === "ASSIST" && (
                 <QuestionBubble question={challenge.question} />
               )}
-              <Challenge
-                options={options}
-                onSelect={onSelect}
-                status={status}
-                selectedOption={selectedOption}
-                disabled={pending}
-                type={challenge.type}
-              />
+              {challenge.type === "FILL_IN" && (
+                <FillInChallenge
+                  question={challenge.question}
+                  disabled={pending}
+                  status={status}
+                  onSubmit={onFillInSubmit}
+                />
+              )}
+              {challenge.type === "MATCH" && (
+                <MatchChallenge
+                  pairs={
+                    typeof challenge.matchPairs === "string"
+                      ? JSON.parse(challenge.matchPairs)
+                      : challenge.matchPairs ?? []
+                  }
+                  disabled={pending}
+                  status={status}
+                  onComplete={onMatchComplete}
+                />
+              )}
+              {challenge.type === "FLASHCARD" && (
+                <FlashcardChallenge
+                  front={challenge.question}
+                  back={challenge.flashcardBack ?? ""}
+                  disabled={pending}
+                  onComplete={onFlashcardComplete}
+                />
+              )}
+              {(challenge.type === "SELECT" || challenge.type === "ASSIST") && (
+                <Challenge
+                  options={options}
+                  onSelect={onSelect}
+                  status={status}
+                  selectedOption={selectedOption}
+                  disabled={pending}
+                  type={challenge.type}
+                />
+              )}
             </div>
           </div>
         </div>
       </div>
       <Footer
-        disabled={pending || !selectedOption}
+        disabled={pending || (!isNewType && !selectedOption) || (isNewType && status === "none")}
         status={status}
         onCheck={onContinue}
       />

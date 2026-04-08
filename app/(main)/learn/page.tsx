@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { Promo } from "@/components/promo";
 import { Quests } from "@/components/quests";
+import { DailyPlan } from "@/components/daily-plan";
+import { Badges } from "@/components/badges";
 import { FeedWrapper } from "@/components/feed-wrapper";
 import { UserProgress } from "@/components/user-progress";
 import { StickyWrapper } from "@/components/sticky-wrapper";
@@ -58,10 +60,20 @@ const LearnPage = async () => {
           points={userProgress.points}
           hasActiveSubscription={isPro}
         />
+        <DailyPlan
+          points={userProgress.points}
+          streak={userProgress.streak}
+          lessonsCompleted={userProgress.totalLessonsCompleted}
+        />
         {!isPro && (
           <Promo />
         )}
         <Quests points={userProgress.points} />
+        <Badges
+          points={userProgress.points}
+          streak={userProgress.streak}
+          lessonsCompleted={userProgress.totalLessonsCompleted}
+        />
       </StickyWrapper>
       <FeedWrapper>
         <Header title={userProgress.activeCourse.title} />
