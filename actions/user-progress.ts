@@ -3,16 +3,16 @@
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { auth, currentUser } from "@clerk/nextjs";
+import { getAuth, getCurrentUser } from "@/lib/auth";
 
 import db from "@/db/drizzle";
 import { POINTS_TO_REFILL } from "@/constants";
 import { getCourseById, getUserProgress, getUserSubscription } from "@/db/queries";
-import { challengeProgress, challenges, userProgress } from "@/db/schema";
+import { challengeProgress, challenges, userProgress, type userRoleEnum } from "@/db/schema";
 
 export const upsertUserProgress = async (courseId: number) => {
-  const { userId } = await auth();
-  const user = await currentUser();
+  const { userId } = await getAuth();
+  const user = await getCurrentUser();
 
   if (!userId || !user) {
     throw new Error("Unauthorized");
@@ -55,7 +55,7 @@ export const upsertUserProgress = async (courseId: number) => {
 };
 
 export const reduceHearts = async (challengeId: number) => {
-  const { userId } = await auth();
+  const { userId } = await getAuth();
 
   if (!userId) {
     throw new Error("Unauthorized");
@@ -134,4 +134,33 @@ export const refillHearts = async () => {
   revalidatePath("/learn");
   revalidatePath("/quests");
   revalidatePath("/leaderboard");
+};
+
+export const setUserRole = async (role: "student" | "teacher" | "parent") => {
+  const { userId } = await getAuth();
+  const user = await getCurrentUser();
+
+  if (!userId || !user) {
+    throw new Error("Unauthorized");
+  }
+
+  const existingUserProgress = await getUserProgress();
+
+  if (existingUserProgress) {
+    await db.update(userProgress).set({
+      role,
+      userName: user.firstName || "User",
+      userImageSrc: user.imageUrl || "/mascot.svg",
+    }).where(eq(userProgress.userId, userId));
+  } else {
+    await db.insert(userProgress).values({
+      userId,
+      role,
+      userName: user.firstName || "User",
+      userImageSrc: user.imageUrl || "/mascot.svg",
+    });
+  }
+
+  revalidatePath("/");
+  revalidatePath("/learn");
 };

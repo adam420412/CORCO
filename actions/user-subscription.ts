@@ -1,6 +1,6 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs";
+import { getAuth, getCurrentUser } from "@/lib/auth";
 
 import { stripe } from "@/lib/stripe";
 import { absoluteUrl } from "@/lib/utils";
@@ -9,8 +9,8 @@ import { getUserSubscription } from "@/db/queries";
 const returnUrl = absoluteUrl("/shop");
 
 export const createStripeUrl = async () => {
-  const { userId } = await auth();
-  const user = await currentUser();
+  const { userId } = await getAuth();
+  const user = await getCurrentUser();
 
   if (!userId || !user) {
     throw new Error("Unauthorized");
@@ -35,12 +35,12 @@ export const createStripeUrl = async () => {
       {
         quantity: 1,
         price_data: {
-          currency: "USD",
+          currency: "PLN",
           product_data: {
-            name: "Lingo Pro",
-            description: "Unlimited Hearts",
+            name: "CORCO Pro",
+            description: "Nielimitowane serca i dostęp premium",
           },
-          unit_amount: 2000, // $20.00 USD
+          unit_amount: 2900, // 29 PLN
           recurring: {
             interval: "month",
           },

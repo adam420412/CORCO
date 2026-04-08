@@ -1,11 +1,12 @@
-import { auth } from "@clerk/nextjs"
+import { getAuth } from "@/lib/auth";
 
 const adminIds = [
   "user_2dGb6YEarBAQHrNYoB5dMtISRWK",
+  "test-user-001",
 ];
 
-export const isAdmin = () => {
-  const { userId } = auth();
+export const isAdmin = async () => {
+  const { userId } = await getAuth();
 
   if (!userId) {
     return false;

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs";
+import { getAuth } from "@/lib/auth";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -9,7 +9,7 @@ import { getUserProgress, getUserSubscription } from "@/db/queries";
 import { challengeProgress, challenges, userProgress } from "@/db/schema";
 
 export const upsertChallengeProgress = async (challengeId: number) => {
-  const { userId } = await auth();
+  const { userId } = await getAuth();
 
   if (!userId) {
     throw new Error("Unauthorized"); 

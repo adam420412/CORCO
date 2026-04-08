@@ -51,10 +51,10 @@ const ShopPage = async () => {
             width={90}
           />
           <h1 className="text-center font-bold text-neutral-800 text-2xl my-6">
-            Shop
+            Sklep
           </h1>
           <p className="text-muted-foreground text-center text-lg mb-6">
-            Spend your points on cool stuff.
+            Wydaj punkty na przydatne rzeczy.
           </p>
           <Items
             hearts={userProgress.hearts}
