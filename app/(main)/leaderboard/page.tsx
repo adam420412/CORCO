@@ -61,7 +61,7 @@ const LearderboardPage = async () => {
             Sprawdź swoje miejsce wśród innych uczniów.
           </p>
           <Separator className="mb-4 h-0.5 rounded-full" />
-          {leaderboard.map((userProgress, index) => (
+          {leaderboard.map((userProgress: any, index: number) => (
             <div 
               key={userProgress.userId}
               className="flex items-center w-full p-2 px-4 rounded-xl hover:bg-gray-200/50"
