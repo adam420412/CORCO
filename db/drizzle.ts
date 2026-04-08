@@ -1,7 +1,7 @@
 import * as schema from "./schema";
 
 function createDb() {
-  const url = process.env.DATABASE_URL!;
+  const url = process.env.DATABASE_URL || "";
 
   // Use Neon serverless for production/Vercel, pg for local dev
   if (url.includes("neon.tech") || process.env.VERCEL) {
