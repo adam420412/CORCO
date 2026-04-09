@@ -1,12 +1,19 @@
-const PROJECT_NUMBER = process.env.NOTEBOOKLM_PROJECT_NUMBER!;
-const LOCATION = process.env.NOTEBOOKLM_LOCATION || "global";
-const ACCESS_TOKEN = process.env.GOOGLE_ACCESS_TOKEN!;
+function getConfig() {
+  const PROJECT_NUMBER = process.env.NOTEBOOKLM_PROJECT_NUMBER;
+  const LOCATION = process.env.NOTEBOOKLM_LOCATION || "global";
+  const ACCESS_TOKEN = process.env.GOOGLE_ACCESS_TOKEN;
 
-const BASE_URL = `https://${LOCATION}-discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_NUMBER}/locations/${LOCATION}/notebooks`;
+  if (!PROJECT_NUMBER || !ACCESS_TOKEN) {
+    throw new Error("NotebookLM not configured: missing NOTEBOOKLM_PROJECT_NUMBER or GOOGLE_ACCESS_TOKEN");
+  }
 
-function headers(extra?: Record<string, string>): HeadersInit {
+  const BASE_URL = `https://${LOCATION}-discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_NUMBER}/locations/${LOCATION}/notebooks`;
+  return { PROJECT_NUMBER, LOCATION, ACCESS_TOKEN, BASE_URL };
+}
+
+function makeHeaders(accessToken: string, extra?: Record<string, string>): HeadersInit {
   return {
-    Authorization: `Bearer ${ACCESS_TOKEN}`,
+    Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
     ...extra,
   };
@@ -25,13 +32,13 @@ async function request<T>(url: string, options: RequestInit): Promise<T> {
 export async function createNotebook(
   title: string
 ): Promise<{ notebookId: string; name: string }> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   const data = await request<{ name: string }>(BASE_URL, {
     method: "POST",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
     body: JSON.stringify({ title }),
   });
 
-  // name format: projects/{p}/locations/{l}/notebooks/{id}
   const notebookId = data.name.split("/").pop()!;
   return { notebookId, name: data.name };
 }
@@ -42,10 +49,11 @@ export async function addTextSource(
   sourceName: string,
   content: string
 ): Promise<{ sourceId: string }> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   const url = `${BASE_URL}/${notebookId}/sources:batchCreate`;
   const data = await request<{ sources: Array<{ name: string }> }>(url, {
     method: "POST",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
     body: JSON.stringify({
       userContents: [
         { textContent: { sourceName, content } },
@@ -63,10 +71,11 @@ export async function addWebSource(
   url: string,
   sourceName: string
 ): Promise<{ sourceId: string }> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   const endpoint = `${BASE_URL}/${notebookId}/sources:batchCreate`;
   const data = await request<{ sources: Array<{ name: string }> }>(endpoint, {
     method: "POST",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
     body: JSON.stringify({
       userContents: [
         { webContent: { url, sourceName } },
@@ -85,6 +94,7 @@ export async function uploadFileSource(
   fileBuffer: Buffer,
   contentType: string
 ): Promise<{ sourceId: string }> {
+  const { PROJECT_NUMBER, LOCATION, ACCESS_TOKEN } = getConfig();
   const url = `https://${LOCATION}-discoveryengine.googleapis.com/upload/v1alpha/projects/${PROJECT_NUMBER}/locations/${LOCATION}/notebooks/${notebookId}/sources:uploadFile`;
 
   const data = await request<{ source: { name: string } }>(url, {
@@ -104,9 +114,10 @@ export async function uploadFileSource(
 
 /** Gets notebook details */
 export async function getNotebook(notebookId: string): Promise<any> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   return request(`${BASE_URL}/${notebookId}`, {
     method: "GET",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
   });
 }
 
@@ -115,9 +126,10 @@ export async function getSource(
   notebookId: string,
   sourceId: string
 ): Promise<any> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   return request(`${BASE_URL}/${notebookId}/sources/${sourceId}`, {
     method: "GET",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
   });
 }
 
@@ -126,10 +138,11 @@ export async function deleteSources(
   notebookId: string,
   sourceNames: string[]
 ): Promise<void> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   const url = `${BASE_URL}/${notebookId}/sources:batchDelete`;
   await request(url, {
     method: "POST",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
     body: JSON.stringify({ names: sourceNames }),
   });
 }
@@ -143,6 +156,7 @@ export async function createAudioOverview(
     languageCode?: string;
   }
 ): Promise<{ audioOverviewId: string }> {
+  const { BASE_URL, ACCESS_TOKEN } = getConfig();
   const url = `${BASE_URL}/${notebookId}/audioOverviews`;
   const body: Record<string, unknown> = {};
 
@@ -152,7 +166,7 @@ export async function createAudioOverview(
 
   const data = await request<{ name: string }>(url, {
     method: "POST",
-    headers: headers(),
+    headers: makeHeaders(ACCESS_TOKEN),
     body: JSON.stringify(body),
   });
 

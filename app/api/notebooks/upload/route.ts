@@ -3,7 +3,6 @@ import { getAuth } from "@/lib/auth";
 import db from "@/db/drizzle";
 import { notebooks, notebookSources } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import * as notebooklm from "@/lib/notebooklm";
 
 export async function POST(req: NextRequest) {
   const { userId } = await getAuth();
@@ -32,23 +31,43 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await notebooklm.uploadFileSource(
-    notebook.notebookId,
-    file.name,
-    buffer,
-    file.type
-  );
 
+  // Extract text from PDF
+  let extractedText = "";
+  if (file.type === "application/pdf") {
+    try {
+      const pdfParseModule = await import("pdf-parse");
+      const pdfParse = (pdfParseModule as any).default || pdfParseModule;
+      const pdfData = await pdfParse(buffer);
+      extractedText = pdfData.text;
+    } catch (e) {
+      return NextResponse.json(
+        { error: "Nie udało się odczytać PDF" },
+        { status: 400 }
+      );
+    }
+  } else {
+    // For text/plain, markdown, etc.
+    extractedText = buffer.toString("utf-8");
+  }
+
+  // Save source to DB
+  const sourceId = `local-${Date.now()}`;
   const [source] = await db
     .insert(notebookSources)
     .values({
       notebookDbId,
-      sourceId: result.sourceId,
+      sourceId,
       sourceName: file.name,
       sourceType: "file",
-      status: "processing",
+      resourceName: null,
+      status: "complete",
     })
     .returning();
 
-  return NextResponse.json(source);
+  return NextResponse.json({
+    source,
+    extractedText,
+    textLength: extractedText.length,
+  });
 }
