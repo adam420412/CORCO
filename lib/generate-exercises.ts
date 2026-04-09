@@ -72,7 +72,8 @@ export async function generateExercises(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  // Try flash first, fall back to flash-lite on quota issues
+  const modelNames = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
 
   // Truncate very long texts to fit context
   const maxChars = 30000;
@@ -89,8 +90,26 @@ ${truncatedText}
 
 Wygeneruj ${count} ćwiczeń na podstawie powyższego materiału. Użyj mieszanki typów (SELECT, FILL_IN, MATCH, FLASHCARD). Odpowiedz TYLKO JSON array.`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  let text = "";
+  for (const modelName of modelNames) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+      break;
+    } catch (e: any) {
+      if (e.message?.includes("429") && modelName !== modelNames[modelNames.length - 1]) {
+        // Rate limited, try next model
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  if (!text) {
+    throw new Error("Wszystkie modele Gemini są chwilowo niedostępne. Spróbuj ponownie za minutę.");
+  }
 
   // Extract JSON from response (handle markdown code blocks)
   let jsonStr = text;

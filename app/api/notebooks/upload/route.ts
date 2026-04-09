@@ -5,26 +5,38 @@ import { notebooks, notebookSources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const MODEL_NAMES = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
   const base64 = buffer.toString("base64");
 
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        mimeType: "application/pdf",
-        data: base64,
-      },
-    },
-    "Wyodrębnij cały tekst z tego dokumentu PDF. Zwróć TYLKO czysty tekst z dokumentu, bez żadnych komentarzy ani formatowania. Zachowaj oryginalny język dokumentu.",
-  ]);
+  for (const modelName of MODEL_NAMES) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: base64,
+          },
+        },
+        "Wyodrębnij cały tekst z tego dokumentu PDF. Zwróć TYLKO czysty tekst z dokumentu, bez żadnych komentarzy ani formatowania. Zachowaj oryginalny język dokumentu.",
+      ]);
+      return result.response.text();
+    } catch (e: any) {
+      if (e.message?.includes("429") && modelName !== MODEL_NAMES[MODEL_NAMES.length - 1]) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
 
-  return result.response.text();
+  throw new Error("Wszystkie modele Gemini są chwilowo niedostępne. Spróbuj za minutę.");
 }
 
 export async function POST(req: NextRequest) {
