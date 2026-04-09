@@ -3,6 +3,29 @@ import { getAuth } from "@/lib/auth";
 import db from "@/db/drizzle";
 import { notebooks, notebookSources } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not set");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const base64 = buffer.toString("base64");
+
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType: "application/pdf",
+        data: base64,
+      },
+    },
+    "Wyodrębnij cały tekst z tego dokumentu PDF. Zwróć TYLKO czysty tekst z dokumentu, bez żadnych komentarzy ani formatowania. Zachowaj oryginalny język dokumentu.",
+  ]);
+
+  return result.response.text();
+}
 
 export async function POST(req: NextRequest) {
   const { userId } = await getAuth();
@@ -32,26 +55,21 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Extract text from PDF
   let extractedText = "";
-  if (file.type === "application/pdf") {
-    try {
-      const pdfParseModule = await import("pdf-parse");
-      const pdfParse = (pdfParseModule as any).default || pdfParseModule;
-      const pdfData = await pdfParse(buffer);
-      extractedText = pdfData.text;
-    } catch (e) {
-      return NextResponse.json(
-        { error: "Nie udało się odczytać PDF" },
-        { status: 400 }
-      );
+  try {
+    if (file.type === "application/pdf") {
+      extractedText = await extractTextFromPDF(buffer);
+    } else {
+      extractedText = buffer.toString("utf-8");
     }
-  } else {
-    // For text/plain, markdown, etc.
-    extractedText = buffer.toString("utf-8");
+  } catch (e: any) {
+    console.error("Text extraction error:", e);
+    return NextResponse.json(
+      { error: `Nie udało się odczytać pliku: ${e.message}` },
+      { status: 400 }
+    );
   }
 
-  // Save source to DB
   const sourceId = `local-${Date.now()}`;
   const [source] = await db
     .insert(notebookSources)
