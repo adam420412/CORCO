@@ -73,7 +73,7 @@ export async function generateExercises(
 
   const genAI = new GoogleGenerativeAI(apiKey);
   // Try flash first, fall back to flash-lite on quota issues
-  const modelNames = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+  const modelNames = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
 
   // Truncate very long texts to fit context
   const maxChars = 30000;

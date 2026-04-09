@@ -5,7 +5,7 @@ import { notebooks, notebookSources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL_NAMES = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+const MODEL_NAMES = ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
